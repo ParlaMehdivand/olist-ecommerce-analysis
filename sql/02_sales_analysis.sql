@@ -177,7 +177,6 @@ GROUP BY c.customer_state
 ORDER BY order_count DESC;
 
 -- Which customer states have the highest average order value?
-
 SELECT
     c.customer_state,
     AVG(order_value) AS average_order_value
