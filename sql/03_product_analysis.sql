@@ -34,6 +34,14 @@ GROUP BY p.product_id
 ORDER BY average_selling_price DESC;
 
 -- Which products are included in the highest number of orders?
+SELECT
+    p.product_id,
+    COUNT(DISTINCT oi.order_id) AS order_count
+FROM products p
+JOIN order_items oi
+    ON p.product_id = oi.product_id
+GROUP BY p.product_id
+ORDER BY order_count DESC;
 
 
 -- PRODUCT CATEGORY PERFORMANCE
