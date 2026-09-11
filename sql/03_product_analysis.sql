@@ -26,7 +26,7 @@ ORDER BY units_sold DESC;
 -- Which products have the highest average selling price?
 SELECT
     p.product_id,
-    AVG(oi.price) AS average_selling_price
+    ROUND(AVG(oi.price), 2) AS average_selling_price
 FROM products p
 JOIN order_items oi
     ON p.product_id = oi.product_id
@@ -47,12 +47,44 @@ ORDER BY order_count DESC;
 -- PRODUCT CATEGORY PERFORMANCE
 
 -- Which product categories generate the highest total revenue?
+SELECT
+    p.product_category_name,
+    SUM(oi.price) AS total_revenue
+FROM products p
+JOIN order_items oi
+    ON p.product_id = oi.product_id
+GROUP BY p.product_category_name
+ORDER BY total_revenue DESC
 
 -- Which product categories sell the highest number of units?
+SELECT
+    p.product_category_name,
+    COUNT(*) AS units_sold
+FROM products p
+JOIN order_items oi
+    ON p.product_id = oi.product_id
+GROUP BY p.product_category_name
+ORDER BY units_sold DESC;
 
 -- Which product categories have the highest average selling price?
+SELECT
+    p.product_category_name,
+    ROUND(AVG(oi.price), 2) AS average_selling_price
+FROM products p
+JOIN order_items oi
+    ON p.product_id = oi.product_id
+GROUP BY p.product_category_name
+ORDER BY average_selling_price DESC;
 
 -- Which product categories have the highest number of orders?
+SELECT
+    p.product_category_name,
+    COUNT(DISTINCT oi.order_id) AS order_count
+FROM products p
+JOIN order_items oi
+    ON p.product_id = oi.product_id
+GROUP BY p.product_category_name
+ORDER BY order_count DESC;
 
 
 -- PRODUCT CATEGORY REVENUE & SALES SHARE
