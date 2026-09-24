@@ -1,2 +1,2 @@
 # Brazilian E-Commerce Data Analysis
-Olist | SQL · Python · Power BI
+Olist | SQL · Python · Excel · Power BI

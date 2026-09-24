@@ -90,6 +90,16 @@ ORDER BY order_count DESC;
 -- PRODUCT CATEGORY REVENUE & SALES SHARE
 
 -- What percentage of total revenue comes from each product category?
+SELECT
+    p.product_category_name,
+    ROUND(
+        100.0 * SUM(oi.price) / (SELECT SUM(price) FROM order_items),
+        2
+    ) AS revenue_percentage
+FROM products p
+JOIN order_items oi ON p.product_id = oi.product_id
+GROUP BY p.product_category_name
+ORDER BY revenue_percentage DESC;
 
 -- What percentage of total units sold comes from each product category?
 
