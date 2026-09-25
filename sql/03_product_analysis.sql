@@ -162,16 +162,16 @@ ORDER BY review_count DESC;
 
 -- Do the best-selling products also receive high review scores?
 SELECT
-    s.product_id,
-    s.units_sold,
-    ROUND(r.average_review_score, 2) AS average_review_score
+    sales.product_id,
+    sales.units_sold,
+    ROUND(reviews.average_review_score, 2) AS average_review_score
 FROM (
     SELECT
         product_id,
         COUNT(*) AS units_sold
     FROM order_items
     GROUP BY product_id
-) s
+) sales
 JOIN (
     SELECT
         oi.product_id,
@@ -180,9 +180,9 @@ JOIN (
     JOIN order_reviews or_
         ON oi.order_id = or_.order_id
     GROUP BY oi.product_id
-) r
-    ON s.product_id = r.product_id
-ORDER BY s.units_sold DESC;
+) reviews
+    ON sales.product_id = reviews.product_id
+ORDER BY sales.units_sold DESC;
 
 
 -- PRODUCT CHARACTERISTICS
