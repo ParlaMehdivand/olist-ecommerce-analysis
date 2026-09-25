@@ -97,28 +97,92 @@ SELECT
         2
     ) AS revenue_percentage
 FROM products p
-JOIN order_items oi ON p.product_id = oi.product_id
+JOIN order_items oi
+    ON p.product_id = oi.product_id
 GROUP BY p.product_category_name
 ORDER BY revenue_percentage DESC;
 
 -- What percentage of total units sold comes from each product category?
+SELECT
+    p.product_category_name,
+    ROUND(
+        100.0 * COUNT(*) / (SELECT COUNT(*) FROM order_items),
+        2
+    ) AS units_sold_percentage
+FROM products p
+JOIN order_items oi
+    ON p.product_id = oi.product_id
+GROUP BY p.product_category_name
+ORDER BY units_sold_percentage DESC;
 
--- Which categories have high sales volume but relatively low revenue?
-
--- Which categories have high revenue but relatively low sales volume?
+-- Which categories have higher revenue per unit?
+SELECT
+    p.product_category_name,
+    ROUND(SUM(oi.price) / COUNT(*), 2) AS average_unit_price
+FROM products p
+JOIN order_items oi
+    ON p.product_id = oi.product_id
+GROUP BY p.product_category_name
+ORDER BY average_unit_price DESC;
 
 
 -- PRODUCT REVIEWS & CUSTOMER SATISFACTION
 
 -- Which product categories have the highest average review score?
-
--- Which product categories have the lowest average review score?
+SELECT
+    p.product_category_name,
+    ROUND(AVG(review_score), 2) AS average_review_score
+FROM products p
+JOIN order_items oi
+    ON p.product_id = oi.product_id
+JOIN order_reviews or_
+    ON oi.order_id = or_.order_id
+GROUP BY p.product_category_name
+ORDER BY average_review_score DESC;
 
 -- Which products have the highest average review scores?
+SELECT
+    oi.product_id,
+    ROUND(AVG(or_.review_score), 2) AS average_review_score
+FROM order_items oi
+JOIN order_reviews or_
+    ON oi.order_id = or_.order_id
+GROUP BY oi.product_id
+ORDER BY average_review_score DESC;
 
 -- Which products receive the most reviews?
+SELECT
+    oi.product_id,
+    COUNT(*) AS review_count
+FROM order_items oi
+JOIN order_reviews or_
+    ON oi.order_id = or_.order_id
+GROUP BY oi.product_id
+ORDER BY review_count DESC;
 
 -- Do the best-selling products also receive high review scores?
+SELECT
+    s.product_id,
+    s.units_sold,
+    ROUND(r.average_review_score, 2) AS average_review_score
+FROM (
+    SELECT
+        product_id,
+        COUNT(*) AS units_sold
+    FROM order_items
+    GROUP BY product_id
+) s
+JOIN (
+    SELECT
+        oi.product_id,
+        AVG(or_.review_score) AS average_review_score
+    FROM order_items oi
+    JOIN order_reviews or_
+        ON oi.order_id = or_.order_id
+    GROUP BY oi.product_id
+) r
+    ON s.product_id = r.product_id
+ORDER BY s.units_sold DESC;
 
 
 -- PRODUCT CHARACTERISTICS
