@@ -188,23 +188,57 @@ ORDER BY sales.units_sold DESC;
 -- PRODUCT CHARACTERISTICS
 
 -- What is the average product weight by category?
+SELECT
+    product_category_name,
+    AVG(product_weight_g) AS avg_weight_g
+FROM products
+GROUP BY product_category_name
+ORDER BY avg_weight_g DESC;
 
 -- What is the average product volume by category?
-
--- Which categories contain the heaviest products?
-
--- Which categories contain the largest products?
+SELECT 
+    product_category_name,
+    AVG(product_length_cm * product_height_cm * product_width_cm) AS avg_volume_cm3
+FROM products
+GROUP BY product_category_name
+ORDER BY avg_volume_cm3 DESC;
 
 
 -- SELLER PRODUCT PERFORMANCE
 
 -- Which sellers generate the highest product revenue?
+SELECT
+    seller_id,
+    SUM(price) AS total_revenue
+FROM order_items
+GROUP BY seller_id
+ORDER BY total_revenue DESC;
 
 -- Which sellers sell the highest number of items?
+SELECT
+    seller_id,
+    COUNT(*) AS items_sold
+FROM order_items
+GROUP BY seller_id
+ORDER BY items_sold DESC;
 
 -- Which sellers have the largest product assortment?
+SELECT
+    seller_id,
+    COUNT(DISTINCT product_id) AS unique_products
+FROM order_items
+GROUP BY seller_id
+ORDER BY unique_products DESC;
 
 -- Which product categories are offered by the most sellers?
+SELECT
+    product_category_name,
+    COUNT(DISTINCT seller_id) AS seller_count
+FROM order_items
+JOIN products
+    ON order_items.product_id = products.product_id
+GROUP BY product_category_name
+ORDER BY seller_count DESC;
 
 
 -- PRODUCT PERFORMANCE OVER TIME
