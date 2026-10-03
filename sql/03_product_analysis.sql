@@ -135,18 +135,18 @@ SELECT
 FROM products p
 JOIN order_items oi
     ON p.product_id = oi.product_id
-JOIN order_reviews or_
-    ON oi.order_id = or_.order_id
+JOIN order_reviews r
+    ON oi.order_id = r.order_id
 GROUP BY p.product_category_name
 ORDER BY average_review_score DESC;
 
 -- Which products have the highest average review scores?
 SELECT
     oi.product_id,
-    ROUND(AVG(or_.review_score), 2) AS average_review_score
+    ROUND(AVG(r.review_score), 2) AS average_review_score
 FROM order_items oi
-JOIN order_reviews or_
-    ON oi.order_id = or_.order_id
+JOIN order_reviews r
+    ON oi.order_id = r.order_id
 GROUP BY oi.product_id
 ORDER BY average_review_score DESC;
 
@@ -155,8 +155,8 @@ SELECT
     oi.product_id,
     COUNT(*) AS review_count
 FROM order_items oi
-JOIN order_reviews or_
-    ON oi.order_id = or_.order_id
+JOIN order_reviews r
+    ON oi.order_id = r.order_id
 GROUP BY oi.product_id
 ORDER BY review_count DESC;
 
@@ -234,9 +234,9 @@ ORDER BY unique_products DESC;
 SELECT
     product_category_name,
     COUNT(DISTINCT seller_id) AS seller_count
-FROM order_items
-JOIN products
-    ON order_items.product_id = products.product_id
+FROM order_items oi
+JOIN products p
+    ON oi.product_id = p.product_id
 GROUP BY product_category_name
 ORDER BY seller_count DESC;
 
@@ -244,10 +244,56 @@ ORDER BY seller_count DESC;
 -- PRODUCT PERFORMANCE OVER TIME
 
 -- How does category revenue change over time?
+SELECT
+    TO_CHAR(o.order_purchase_timestamp, 'Mon YYYY') AS month,
+    p.product_category_name,
+    SUM(oi.price) AS total_revenue
+FROM order_items oi
+JOIN orders o
+    ON oi.order_id = o.order_id
+JOIN products p
+    ON oi.product_id = p.product_id
+GROUP BY
+    DATE_TRUNC('month', o.order_purchase_timestamp),
+    month,
+    p.product_category_name
+ORDER BY
+    DATE_TRUNC('month', o.order_purchase_timestamp),
+    total_revenue DESC;
 
 -- Which product categories generate the highest revenue each year?
+SELECT
+    EXTRACT(YEAR FROM o.order_purchase_timestamp) AS year,
+    p.product_category_name,
+    SUM(oi.price) AS total_revenue
+FROM order_items oi
+JOIN orders o
+    ON oi.order_id = o.order_id
+JOIN products p
+    ON oi.product_id = p.product_id
+GROUP BY
+    year,
+    p.product_category_name
+ORDER BY
+    year,
+    total_revenue DESC;
 
 -- Which product categories sell the most units each year?
+SELECT
+    EXTRACT(YEAR FROM o.order_purchase_timestamp) AS year,
+    p.product_category_name,
+    COUNT(*) AS units_sold
+FROM order_items AS oi
+JOIN orders AS o
+    ON oi.order_id = o.order_id
+JOIN products AS p
+    ON oi.product_id = p.product_id
+GROUP BY
+    year,
+    p.product_category_name
+ORDER BY
+    year,
+    units_sold DESC;
 
 
 -- TOP PRODUCT & CATEGORY RANKINGS
