@@ -299,12 +299,44 @@ ORDER BY
 -- TOP PRODUCT & CATEGORY RANKINGS
 
 -- What are the top 10 products by revenue?
+SELECT
+    oi.product_id,
+    SUM(oi.price) AS total_revenue
+FROM order_items
+GROUP BY product_id
+ORDER BY total_revenue DESC
+LIMIT 10;
 
 -- What are the top 10 products by units sold?
+SELECT
+    oi.product_id,
+    COUNT(*) AS units_sold
+FROM order_items
+GROUP BY product_id
+ORDER BY units_sold DESC
+LIMIT 10;
 
 -- What are the top 10 product categories by revenue?
+SELECT
+    p.product_category_name,
+    SUM(oi.price) AS total_revenue
+FROM order_items oi
+JOIN products p
+    ON oi.product_id = p.product_id
+GROUP BY p.product_category_name
+ORDER BY total_revenue DESC
+LIMIT 10;
 
 -- What are the top 10 product categories by units sold?
+SELECT
+    p.product_category_name,
+    COUNT(*) AS units_sold
+FROM order_items oi
+JOIN products p
+    ON oi.product_id = p.product_id
+GROUP BY p.product_category_name
+ORDER BY units_sold DESC
+LIMIT 10;
 
 
 -- PRODUCT BUSINESS INSIGHTS
