@@ -5,42 +5,34 @@ SET search_path TO olist;
 
 -- Which products generate the highest total revenue?
 SELECT
-    p.product_id,
-    SUM(oi.price) AS total_revenue
-FROM products p
-JOIN order_items oi
-    ON p.product_id = oi.product_id
-GROUP BY p.product_id
+    product_id,
+    SUM(price) AS total_revenue
+FROM order_items
+GROUP BY product_id
 ORDER BY total_revenue DESC;
 
 -- Which products sell the highest number of units?
 SELECT
-    p.product_id,
+    product_id,
     COUNT(*) AS units_sold
-FROM products p
-JOIN order_items oi
-    ON p.product_id = oi.product_id
-GROUP BY p.product_id
+FROM order_items
+GROUP BY product_id
 ORDER BY units_sold DESC;
 
 -- Which products have the highest average selling price?
 SELECT
-    p.product_id,
-    ROUND(AVG(oi.price), 2) AS average_selling_price
-FROM products p
-JOIN order_items oi
-    ON p.product_id = oi.product_id
-GROUP BY p.product_id
+    product_id,
+    ROUND(AVG(price), 2) AS average_selling_price
+FROM order_items
+GROUP BY product_id
 ORDER BY average_selling_price DESC;
 
 -- Which products are included in the highest number of orders?
 SELECT
-    p.product_id,
-    COUNT(DISTINCT oi.order_id) AS order_count
-FROM products p
-JOIN order_items oi
-    ON p.product_id = oi.product_id
-GROUP BY p.product_id
+    product_id,
+    COUNT(DISTINCT order_id) AS order_count
+FROM order_items
+GROUP BY product_id
 ORDER BY order_count DESC;
 
 
@@ -54,7 +46,7 @@ FROM products p
 JOIN order_items oi
     ON p.product_id = oi.product_id
 GROUP BY p.product_category_name
-ORDER BY total_revenue DESC
+ORDER BY total_revenue DESC;
 
 -- Which product categories sell the highest number of units?
 SELECT
@@ -115,45 +107,49 @@ JOIN order_items oi
 GROUP BY p.product_category_name
 ORDER BY units_sold_percentage DESC;
 
--- Which categories have higher revenue per unit?
-SELECT
-    p.product_category_name,
-    ROUND(SUM(oi.price) / COUNT(*), 2) AS average_unit_price
-FROM products p
-JOIN order_items oi
-    ON p.product_id = oi.product_id
-GROUP BY p.product_category_name
-ORDER BY average_unit_price DESC;
-
 
 -- PRODUCT REVIEWS & CUSTOMER SATISFACTION
 
 -- Which product categories have the highest average review score?
+WITH category_reviews AS (
+    SELECT DISTINCT
+        oi.order_id,
+        p.product_category_name,
+        r.review_score
+    FROM order_items oi
+    JOIN products p
+        ON oi.product_id = p.product_id
+    JOIN order_reviews r
+        ON oi.order_id = r.order_id
+)
 SELECT
-    p.product_category_name,
+    product_category_name,
     ROUND(AVG(review_score), 2) AS average_review_score
-FROM products p
-JOIN order_items oi
-    ON p.product_id = oi.product_id
-JOIN order_reviews r
-    ON oi.order_id = r.order_id
-GROUP BY p.product_category_name
+FROM category_reviews
+GROUP BY product_category_name
 ORDER BY average_review_score DESC;
 
 -- Which products have the highest average review scores?
+WITH product_reviews AS (
+    SELECT DISTINCT
+        oi.order_id,
+        oi.product_id,
+        r.review_score
+    FROM order_items oi
+    JOIN order_reviews r
+        ON oi.order_id = r.order_id
+)
 SELECT
-    oi.product_id,
-    ROUND(AVG(r.review_score), 2) AS average_review_score
-FROM order_items oi
-JOIN order_reviews r
-    ON oi.order_id = r.order_id
-GROUP BY oi.product_id
+    product_id,
+    ROUND(AVG(review_score), 2) AS average_review_score
+FROM product_reviews
+GROUP BY product_id
 ORDER BY average_review_score DESC;
 
 -- Which products receive the most reviews?
 SELECT
     oi.product_id,
-    COUNT(*) AS review_count
+    COUNT(DISTINCT r.review_id) AS review_count
 FROM order_items oi
 JOIN order_reviews r
     ON oi.order_id = r.order_id
@@ -161,28 +157,33 @@ GROUP BY oi.product_id
 ORDER BY review_count DESC;
 
 -- Do the best-selling products also receive high review scores?
-SELECT
-    sales.product_id,
-    sales.units_sold,
-    ROUND(reviews.average_review_score, 2) AS average_review_score
-FROM (
+WITH product_sales AS (
     SELECT
         product_id,
         COUNT(*) AS units_sold
     FROM order_items
     GROUP BY product_id
-) sales
-JOIN (
-    SELECT
+),
+product_reviews AS (
+    SELECT DISTINCT
+        oi.order_id,
         oi.product_id,
-        AVG(or_.review_score) AS average_review_score
+        r.review_score
     FROM order_items oi
-    JOIN order_reviews or_
-        ON oi.order_id = or_.order_id
-    GROUP BY oi.product_id
-) reviews
-    ON sales.product_id = reviews.product_id
-ORDER BY sales.units_sold DESC;
+    JOIN order_reviews r
+        ON oi.order_id = r.order_id
+)
+SELECT
+    product_sales.product_id,
+    product_sales.units_sold,
+    ROUND(AVG(product_reviews.review_score), 2) AS average_review_score
+FROM product_sales
+JOIN product_reviews
+    ON product_sales.product_id = product_reviews.product_id
+GROUP BY
+    product_sales.product_id,
+    product_sales.units_sold
+ORDER BY product_sales.units_sold DESC;
 
 
 -- PRODUCT CHARACTERISTICS
@@ -190,15 +191,18 @@ ORDER BY sales.units_sold DESC;
 -- What is the average product weight by category?
 SELECT
     product_category_name,
-    AVG(product_weight_g) AS avg_weight_g
+    ROUND(AVG(product_weight_g), 2) AS avg_weight_g
 FROM products
 GROUP BY product_category_name
 ORDER BY avg_weight_g DESC;
 
 -- What is the average product volume by category?
-SELECT 
+SELECT
     product_category_name,
-    AVG(product_length_cm * product_height_cm * product_width_cm) AS avg_volume_cm3
+    ROUND(
+        AVG(product_length_cm * product_height_cm * product_width_cm),
+        2
+    ) AS avg_volume_cm3
 FROM products
 GROUP BY product_category_name
 ORDER BY avg_volume_cm3 DESC;
@@ -232,12 +236,12 @@ ORDER BY unique_products DESC;
 
 -- Which product categories are offered by the most sellers?
 SELECT
-    product_category_name,
-    COUNT(DISTINCT seller_id) AS seller_count
+    p.product_category_name,
+    COUNT(DISTINCT oi.seller_id) AS seller_count
 FROM order_items oi
 JOIN products p
     ON oi.product_id = p.product_id
-GROUP BY product_category_name
+GROUP BY p.product_category_name
 ORDER BY seller_count DESC;
 
 
@@ -255,7 +259,6 @@ JOIN products p
     ON oi.product_id = p.product_id
 GROUP BY
     DATE_TRUNC('month', o.order_purchase_timestamp),
-    month,
     p.product_category_name
 ORDER BY
     DATE_TRUNC('month', o.order_purchase_timestamp),
@@ -283,10 +286,10 @@ SELECT
     EXTRACT(YEAR FROM o.order_purchase_timestamp) AS year,
     p.product_category_name,
     COUNT(*) AS units_sold
-FROM order_items AS oi
-JOIN orders AS o
+FROM order_items oi
+JOIN orders o
     ON oi.order_id = o.order_id
-JOIN products AS p
+JOIN products p
     ON oi.product_id = p.product_id
 GROUP BY
     year,
@@ -300,8 +303,8 @@ ORDER BY
 
 -- What are the top 10 products by revenue?
 SELECT
-    oi.product_id,
-    SUM(oi.price) AS total_revenue
+    product_id,
+    SUM(price) AS total_revenue
 FROM order_items
 GROUP BY product_id
 ORDER BY total_revenue DESC
@@ -309,7 +312,7 @@ LIMIT 10;
 
 -- What are the top 10 products by units sold?
 SELECT
-    oi.product_id,
+    product_id,
     COUNT(*) AS units_sold
 FROM order_items
 GROUP BY product_id
@@ -341,12 +344,22 @@ LIMIT 10;
 
 -- PRODUCT BUSINESS INSIGHTS
 
--- Which product categories are the strongest overall performers?
-
--- Which categories have high demand but relatively low revenue?
-
--- Which categories have high revenue but relatively low demand?
-
--- Are the best-selling products also the highest-revenue products?
-
--- Are highly reviewed products also among the best-selling products?
+-- Which product categories combine high sales volume and high revenue?
+WITH category_metrics AS (
+    SELECT
+        p.product_category_name,
+        COUNT(*) AS units_sold,
+        SUM(oi.price) AS total_revenue
+    FROM order_items oi
+    JOIN products p
+        ON oi.product_id = p.product_id
+    GROUP BY p.product_category_name
+)
+SELECT
+    product_category_name,
+    units_sold,
+    total_revenue,
+    RANK() OVER (ORDER BY units_sold DESC) AS sales_rank,
+    RANK() OVER (ORDER BY total_revenue DESC) AS revenue_rank
+FROM category_metrics
+ORDER BY sales_rank;
