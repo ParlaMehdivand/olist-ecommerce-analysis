@@ -4,25 +4,127 @@ SET search_path TO olist;
 -- CUSTOMER OVERVIEW
 
 -- How many unique customers have placed orders?
+SELECT COUNT(DISTINCT customer_id) AS unique_customers
+FROM orders;
 
 -- How many orders does each customer place on average?
+SELECT ROUND(AVG(order_count), 2) AS avg_orders_per_customer
+FROM (
+    SELECT c.customer_unique_id, COUNT(*) AS order_count
+    FROM orders o
+    JOIN customers c
+        ON o.customer_id = c.customer_id
+    GROUP BY c.customer_unique_id
+) AS customer_orders;
 
 -- How many customers have placed more than one order?
+SELECT COUNT(*) AS repeat_customers
+FROM (
+    SELECT c.customer_unique_id
+    FROM orders o
+    JOIN customers c
+        ON o.customer_id = c.customer_id
+    GROUP BY c.customer_unique_id
+    HAVING COUNT(*) > 1
+) AS repeat_customers;
 
 -- What percentage of customers are repeat customers?
+SELECT
+    ROUND(
+        COUNT(*) FILTER (WHERE order_count > 1) * 100.0
+        / COUNT(*),
+        2
+    ) AS repeat_customer_percentage
+FROM (
+    SELECT c.customer_unique_id, COUNT(*) AS order_count
+    FROM orders o
+    JOIN customers c
+        ON o.customer_id = c.customer_id
+    GROUP BY c.customer_unique_id
+) AS customer_orders;
 
 
 -- CUSTOMER SPENDING & ORDER VALUE
 
 -- Which customers generate the highest total revenue?
+SELECT
+    c.customer_unique_id,
+    ROUND(SUM(oi.price), 2) AS total_revenue
+FROM customers c
+JOIN orders o
+    ON c.customer_id = o.customer_id
+JOIN order_items oi
+    ON o.order_id = oi.order_id
+GROUP BY c.customer_unique_id
+ORDER BY total_revenue DESC;
 
 -- Which customers place the highest number of orders?
+SELECT
+    c.customer_unique_id,
+    COUNT(o.order_id) AS total_orders
+FROM customers c
+JOIN orders o
+    ON c.customer_id = o.customer_id
+GROUP BY c.customer_unique_id
+ORDER BY total_orders DESC;
 
 -- Which customers have the highest average order value?
+SELECT
+    c.customer_unique_id,
+    ROUND(AVG(order_totals.order_value), 2) AS avg_order_value
+FROM customers c
+JOIN orders o
+    ON c.customer_id = o.customer_id
+JOIN (
+    SELECT
+        order_id,
+        SUM(price) AS order_value
+    FROM order_items
+    GROUP BY order_id
+) AS order_totals
+    ON o.order_id = order_totals.order_id
+GROUP BY c.customer_unique_id
+ORDER BY avg_order_value DESC;
 
 -- What is the average total spending per customer?
+SELECT
+    ROUND(AVG(customer_spending), 2) AS avg_spending_per_customer
+FROM (
+    SELECT
+        c.customer_unique_id,
+        SUM(oi.price) AS customer_spending
+    FROM customers c
+    JOIN orders o
+        ON c.customer_id = o.customer_id
+    JOIN order_items oi
+        ON o.order_id = oi.order_id
+    GROUP BY c.customer_unique_id
+) AS customer_totals;
 
 -- How is customer spending distributed across customers?
+SELECT
+    ROUND(MIN(customer_spending), 2) AS min_spending,
+    ROUND(MAX(customer_spending), 2) AS max_spending,
+    ROUND(AVG(customer_spending), 2) AS avg_spending,
+    ROUND(
+        CAST(
+            PERCENTILE_CONT(0.5)
+            WITHIN GROUP (ORDER BY customer_spending)
+            AS NUMERIC
+        ), 2
+    ) AS median_spending,
+    ROUND(CAST(STDDEV(customer_spending) AS NUMERIC), 2) AS std_spending
+FROM (
+    SELECT
+        c.customer_unique_id,
+        SUM(oi.price) AS customer_spending
+    FROM customers c
+    JOIN orders o
+        ON c.customer_id = o.customer_id
+    JOIN order_items oi
+        ON o.order_id = oi.order_id
+    GROUP BY c.customer_unique_id
+) AS customer_totals;
 
 
 -- CUSTOMER RETENTION & REPEAT PURCHASES
