@@ -130,16 +130,114 @@ FROM (
 -- CUSTOMER RETENTION & REPEAT PURCHASES
 
 -- What percentage of customers make only one purchase?
+SELECT
+    ROUND(
+        COUNT(*) FILTER (WHERE order_count = 1) * 100.0
+        / COUNT(*),
+        2
+    ) AS one_time_customer_percentage
+FROM (
+    SELECT
+        c.customer_unique_id,
+        COUNT(o.order_id) AS order_count
+    FROM customers c
+    JOIN orders o
+        ON c.customer_id = o.customer_id
+    JOIN order_items oi
+        ON o.order_id = oi.order_id
+    GROUP BY c.customer_unique_id
+) AS customer_orders;
 
 -- What percentage of customers make multiple purchases?
+SELECT
+    ROUND(
+        COUNT(*) FILTER (WHERE order_count > 1) * 100.0
+        / COUNT(*),
+        2
+    ) AS repeat_customer_percentage
+FROM (
+    SELECT
+        c.customer_unique_id,
+        COUNT(o.order_id) AS order_count
+    FROM customers c
+    JOIN orders o
+        ON c.customer_id = o.customer_id
+    JOIN order_items oi
+        ON o.order_id = oi.order_id
+    GROUP BY c.customer_unique_id
+) AS customer_orders;
 
 -- How many orders do repeat customers place on average?
+SELECT
+    ROUND(AVG(order_count), 2) AS avg_orders_per_repeat_customer
+FROM (
+    SELECT
+        c.customer_unique_id,
+        COUNT(o.order_id) AS order_count
+    FROM customers c
+    JOIN orders o
+        ON c.customer_id = o.customer_id
+    GROUP BY c.customer_unique_id
+    HAVING COUNT(o.order_id) > 1
+) AS repeat_customers;
 
 -- How much revenue comes from repeat customers?
+SELECT
+    ROUND(SUM(oi.price), 2) AS repeat_customer_revenue
+FROM customers c
+JOIN orders o
+    ON c.customer_id = o.customer_id
+JOIN order_items oi
+    ON o.order_id = oi.order_id
+WHERE c.customer_unique_id IN (
+    SELECT
+        c2.customer_unique_id
+    FROM customers c2
+    JOIN orders o2
+        ON c2.customer_id = o2.customer_id
+    GROUP BY c2.customer_unique_id
+    HAVING COUNT(o2.order_id) > 1
+);
 
 -- How much revenue comes from one-time customers?
+SELECT
+    ROUND(SUM(oi.price), 2) AS one_time_customer_revenue
+FROM customers c
+JOIN orders o
+    ON c.customer_id = o.customer_id
+JOIN order_items oi
+    ON o.order_id = oi.order_id
+WHERE c.customer_unique_id IN (
+    SELECT
+        c2.customer_unique_id
+    FROM customers c2
+    JOIN orders o2
+        ON c2.customer_id = o2.customer_id
+    GROUP BY c2.customer_unique_id
+    HAVING COUNT(o2.order_id) = 1
+);
 
 -- How does the average spending of repeat customers compare with one-time customers?
+SELECT
+    CASE
+        WHEN order_count = 1 THEN 'One-time customers'
+        ELSE 'Repeat customers'
+    END AS customer_type,
+    ROUND(AVG(customer_spending), 2) AS avg_spending
+FROM (
+    SELECT
+        c.customer_unique_id,
+        COUNT(DISTINCT o.order_id) AS order_count,
+        SUM(oi.price) AS customer_spending
+    FROM customers c
+    JOIN orders o
+        ON c.customer_id = o.customer_id
+    JOIN order_items oi
+        ON o.order_id = oi.order_id
+    GROUP BY c.customer_unique_id
+) AS customer_totals
+GROUP BY customer_type
+ORDER BY avg_spending DESC;
 
 
 -- CUSTOMER PURCHASE BEHAVIOR
